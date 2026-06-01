@@ -29,6 +29,7 @@ struct Scene {
 Scene create_prism_showcase_scene(const ImageProperties& img_props);
 Scene create_material_showcase_scene(const ImageProperties& img_props);
 Scene create_cornell_box_scene(const ImageProperties& img_props);
+Scene create_rainbow_scene(const ImageProperties& img_props);
 
 void allocate_scene_on_gpu(
     const Scene& scene,

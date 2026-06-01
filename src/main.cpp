@@ -58,7 +58,8 @@ int main() {
     std::cout << "  1. Prism in Cornell Box" << std::endl;
     std::cout << "  2. Prism showcase (exterior)" << std::endl;
     std::cout << "  3. Material showcase" << std::endl;
-    std::cout << "Your choice (1-3): ";
+    std::cout << "  4. Rainbow focus showcase" << std::endl;
+    std::cout << "Your choice (1-4): ";
     std::cin >> scene_choice;
 
     Scene scene(Camera(Point3(0, 0, 0), Point3(0, 0, -1), Vec3(0, 1, 0), 40, 1.0, 0.0, 10.0), img_props);
@@ -72,6 +73,9 @@ int main() {
             break;
         case 3:
             scene = create_material_showcase_scene(img_props);
+            break;
+        case 4:
+            scene = create_rainbow_scene(img_props);
             break;
         default:
             scene = create_cornell_box_scene(img_props);
