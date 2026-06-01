@@ -324,30 +324,32 @@ Scene create_cornell_box_scene(const ImageProperties& img_props) {
 }
 
 Scene create_rainbow_scene(const ImageProperties& img_props) {
-    Point3 lookfrom(0, 3, -8);
-    Point3 lookat(0, 2, 0);
-    Vec3 vup(0, 1, 0);
-    float dist_to_focus = 8.0f;
+    Point3 lookfrom(0, 3, 0);
+    Point3 lookat(0, 0.5f, 0);
+    Vec3 vup(0, 0, 1);
+    float dist_to_focus = 2.5f;
     float aperture = 0.05f;
     float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
 
-    Camera cam(lookfrom, lookat, vup, 40, aspect_ratio, aperture, dist_to_focus);
+    Camera cam(lookfrom, lookat, vup, 60, aspect_ratio, aperture, dist_to_focus);
 
     Scene scene(cam, img_props);
 
     int white_material = add_lambertian_material(scene, Color(0.9f, 0.9f, 0.9f));
     int prism_material = add_dielectric_material(scene, 1.5f, true);
-    int light_material = add_emissive_material(scene, Color(40, 40, 40));
+    int light_material = add_emissive_material(scene, Color(100, 100, 100));
 
     // Create a plain white box setup (floor, left, right, back walls)
-    add_rectangle_xz(scene, -15, 15, -15, 15, 0, white_material); // Floor
-    add_rectangle_xy(scene, -15, 15, 0, 15, 15, white_material);  // Back wall
+    add_rectangle_xz(scene, -1, 1, -1, 1, 0, white_material); // Floor
+    add_rectangle_xy(scene, -1, 1, 0, 4, 1, white_material);  // Back wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, -1, white_material); // Left wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, 1, white_material);  // Right wall
 
     // The prism in the center
-    add_triangular_prism(scene, Point3(0, 1.5f, 0), -3.0f, 3.0f, prism_material);
+    add_triangular_prism(scene, Point3(0, 0, 0.25f), -1, 1, prism_material);
 
     // A light pointing at the prism. It's close to cast strong light that will disperse.
-    add_sphere(scene, Point3(-5, 5, -5), 2.0f, light_material);
+    add_sphere(scene, Point3(-0.5f, 0.5f, -1.5f), 0.1f, light_material);
 
     return scene;
 }
