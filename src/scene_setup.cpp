@@ -342,8 +342,6 @@ Scene create_rainbow_scene(const ImageProperties& img_props) {
     // Create a plain white box setup (floor, left, right, back walls)
     add_rectangle_xz(scene, -15, 15, -15, 15, 0, white_material); // Floor
     add_rectangle_xy(scene, -15, 15, 0, 15, 15, white_material);  // Back wall
-    add_rectangle_yz(scene, 0, 15, -15, 15, -15, white_material); // Left wall
-    add_rectangle_yz(scene, 0, 15, -15, 15, 15, white_material);  // Right wall
 
     // The prism in the center
     add_triangular_prism(scene, Point3(0, 1.5f, 0), -3.0f, 3.0f, prism_material);

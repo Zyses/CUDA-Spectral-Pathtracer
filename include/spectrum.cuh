@@ -29,10 +29,6 @@ __host__ __device__ inline void wavelength_to_xyz(float lambda, float& x, float&
     z = 1.217f * expf(-0.5f * t6 * t6) + 0.681f * expf(-0.5f * t7 * t7);
 }
 
-__host__ __device__ inline float sRGB_gamma_deprecated(float v) {
-    return v <= 0.0031308f ? 12.92f * v : 1.055f * powf(v, 1.0f / 2.4f) - 0.055f;
-}
-
 __host__ __device__ inline Color wavelength_to_rgb(float wavelength) {
     float clamped_lambda = fmaxf(380.0f, fminf(wavelength, 780.0f));
 
