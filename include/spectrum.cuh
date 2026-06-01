@@ -14,57 +14,36 @@ struct SpectralSampling {
     float delta_lambda;
 };
 
+__host__ __device__ inline void wavelength_to_xyz(float lambda, float& x, float& y, float& z) {
+    float t1 = (lambda - 442.0f) * ((lambda < 442.0f) ? 0.0624f : 0.0374f);
+    float t2 = (lambda - 599.8f) * ((lambda < 599.8f) ? 0.0264f : 0.0323f);
+    float t3 = (lambda - 501.1f) * ((lambda < 501.1f) ? 0.0490f : 0.0382f);
+    x = 0.362f * expf(-0.5f * t1 * t1) + 1.056f * expf(-0.5f * t2 * t2) - 0.065f * expf(-0.5f * t3 * t3);
+
+    float t4 = (lambda - 568.8f) * ((lambda < 568.8f) ? 0.0213f : 0.0247f);
+    float t5 = (lambda - 530.9f) * ((lambda < 530.9f) ? 0.0613f : 0.0322f);
+    y = 0.821f * expf(-0.5f * t4 * t4) + 0.286f * expf(-0.5f * t5 * t5);
+
+    float t6 = (lambda - 437.0f) * ((lambda < 437.0f) ? 0.0845f : 0.0278f);
+    float t7 = (lambda - 459.0f) * ((lambda < 459.0f) ? 0.0385f : 0.0725f);
+    z = 1.217f * expf(-0.5f * t6 * t6) + 0.681f * expf(-0.5f * t7 * t7);
+}
+
+__host__ __device__ inline float sRGB_gamma_deprecated(float v) {
+    return v <= 0.0031308f ? 12.92f * v : 1.055f * powf(v, 1.0f / 2.4f) - 0.055f;
+}
+
 __host__ __device__ inline Color wavelength_to_rgb(float wavelength) {
-    float gamma = 0.8f;
-    float intensity_max = 1.0f;
-    float factor;
-    Color rgb(0, 0, 0);
+    float clamped_lambda = fmaxf(380.0f, fminf(wavelength, 780.0f));
 
-    if ((wavelength >= 380) && (wavelength < 440)) {
-        rgb.x = -(wavelength - 440) / (440 - 380);
-        rgb.y = 0.0f;
-        rgb.z = 1.0f;
-    } else if ((wavelength >= 440) && (wavelength < 490)) {
-        rgb.x = 0.0f;
-        rgb.y = (wavelength - 440) / (490 - 440);
-        rgb.z = 1.0f;
-    } else if ((wavelength >= 490) && (wavelength < 510)) {
-        rgb.x = 0.0f;
-        rgb.y = 1.0f;
-        rgb.z = -(wavelength - 510) / (510 - 490);
-    } else if ((wavelength >= 510) && (wavelength < 580)) {
-        rgb.x = (wavelength - 510) / (580 - 510);
-        rgb.y = 1.0f;
-        rgb.z = 0.0f;
-    } else if ((wavelength >= 580) && (wavelength < 645)) {
-        rgb.x = 1.0f;
-        rgb.y = -(wavelength - 645) / (645 - 580);
-        rgb.z = 0.0f;
-    } else if ((wavelength >= 645) && (wavelength < 781)) {
-        rgb.x = 1.0f;
-        rgb.y = 0.0f;
-        rgb.z = 0.0f;
-    } else {
-        rgb.x = 0.0f;
-        rgb.y = 0.0f;
-        rgb.z = 0.0f;
-    }
+    float x_val, y_val, z_val;
+    wavelength_to_xyz(clamped_lambda, x_val, y_val, z_val);
 
-    if ((wavelength >= 380) && (wavelength < 420)) {
-        factor = 0.3f + 0.7f * (wavelength - 380) / (420 - 380);
-    } else if ((wavelength >= 420) && (wavelength < 701)) {
-        factor = 1.0f;
-    } else if ((wavelength >= 701) && (wavelength < 781)) {
-        factor = 0.3f + 0.7f * (780 - wavelength) / (780 - 700);
-    } else {
-        factor = 0.0f;
-    }
+    float r =  3.2404542f * x_val - 1.5371385f * y_val - 0.4985314f * z_val;
+    float g = -0.9692660f * x_val + 1.8760108f * y_val + 0.0415560f * z_val;
+    float b =  0.0556434f * x_val - 0.2040259f * y_val + 1.0572252f * z_val;
 
-    rgb.x = powf(rgb.x * factor * intensity_max, gamma);
-    rgb.y = powf(rgb.y * factor * intensity_max, gamma);
-    rgb.z = powf(rgb.z * factor * intensity_max, gamma);
-
-    return rgb;
+    return Color(r, g, b);
 }
 
 __host__ __device__ inline float cauchy_dispersion(float wavelength, float A, float B, float C) {

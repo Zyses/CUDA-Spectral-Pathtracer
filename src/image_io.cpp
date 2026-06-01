@@ -6,6 +6,10 @@
 #include <sstream>
 #include <algorithm>
 
+inline float sRGB_gamma(float v) {
+    return v <= 0.0031308f ? 12.92f * v : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f;
+}
+
 void save_image_ppm(
     const std::string& filename,
     const std::vector<Color>& framebuffer,
@@ -18,24 +22,32 @@ void save_image_ppm(
         std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
         return;
     }
-    
+
     outfile << "P3\n" << width << " " << height << "\n255\n";
-    
+
     float scale = 1.0f / samples_per_pixel;
-    
+
     for (int j = height - 1; j >= 0; j--) {
         for (int i = 0; i < width; i++) {
             int pixel_index = j * width + i;
-            
+
             Color pixel = framebuffer[pixel_index] * scale;
-            pixel.x = std::sqrt(pixel.x);
-            pixel.y = std::sqrt(pixel.y);
-            pixel.z = std::sqrt(pixel.z);
-            
+
+            // Clamp negative values that resulted from out-of-gamut spectral XYZ->RGB transformations
+            pixel.x = std::max(0.0f, pixel.x);
+            pixel.y = std::max(0.0f, pixel.y);
+            float max_z = std::max(0.0f, pixel.z); 
+            pixel.z = max_z;
+
+            // Apply correct sRGB gamma mapping post-accumulation
+            pixel.x = sRGB_gamma(pixel.x);
+            pixel.y = sRGB_gamma(pixel.y);
+            pixel.z = sRGB_gamma(pixel.z);
+
             int r = static_cast<int>(256 * std::clamp(pixel.x, 0.0f, 0.999f));
             int g = static_cast<int>(256 * std::clamp(pixel.y, 0.0f, 0.999f));
             int b = static_cast<int>(256 * std::clamp(pixel.z, 0.0f, 0.999f));
-            
+
             outfile << r << ' ' << g << ' ' << b << '\n';
         }
     }
