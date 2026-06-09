@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
         std::cout << "  1. Prism in Cornell Box" << std::endl;
         std::cout << "  2. Prism showcase (exterior)" << std::endl;
         std::cout << "  3. Material showcase" << std::endl;
-        std::cout << "Your choice (1-3): ";
+        std::cout << "  4. Rainbow scene" << std::endl;
+        std::cout << "Your choice (1-4): ";
         std::cin >> scene_choice;
     }
 
