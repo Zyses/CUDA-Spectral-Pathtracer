@@ -12,6 +12,12 @@
 #include "spectrum.cuh"
 #include "cuda_utils.cuh"
 
+#ifdef __INTELLISENSE__
+#define CUDA_LAUNCH(kernel, grid, blocks, ...) kernel(__VA_ARGS__)
+#else
+#define CUDA_LAUNCH(kernel, grid, blocks, ...) kernel<<<grid, blocks>>>(__VA_ARGS__)
+#endif
+
 __global__ void init_rand_state(curandState* rand_state, int width, int height, unsigned long seed) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -460,7 +466,7 @@ extern "C" void launch_init_rand_states(
         (img_props.height + blocks.y - 1) / blocks.y
     );
 
-    init_rand_state<<<grid, blocks>>>(
+    CUDA_LAUNCH(init_rand_state, grid, blocks,
         rand_state,
         img_props.width,
         img_props.height,
@@ -491,7 +497,7 @@ extern "C" void launch_render_kernel(
         (img_props.height + blocks.y - 1) / blocks.y
     );
 
-    render_kernel<<<grid, blocks>>>(
+    CUDA_LAUNCH(render_kernel, grid, blocks,
         framebuffer,
         img_props.width,
         img_props.height,
