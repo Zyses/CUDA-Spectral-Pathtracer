@@ -323,6 +323,41 @@ Scene create_cornell_box_scene(const ImageProperties& img_props) {
     return scene;
 }
 
+Scene create_rainbow_scene(const ImageProperties& img_props) {
+    Point3 lookfrom(0.5f, 2, 0);
+    Point3 lookat(0.25f, 0.5f, 0);
+    Vec3 vup(0, 1, 0);
+    float dist_to_focus = 1.5f;
+    float aperture = 0.0f;
+    float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
+
+    Camera cam(lookfrom, lookat, vup, 60, aspect_ratio, aperture, dist_to_focus);
+
+    Scene scene(cam, img_props);
+
+    int screen_material = add_lambertian_material(scene, Color(0.9f, 0.9f, 0.9f));
+    int dark_material = add_lambertian_material(scene, Color(0.1f, 0.1f, 0.1f));
+    int prism_material = add_dielectric_material(scene, 1.5f, true);
+    int light_material = add_emissive_material(scene, Color(100, 100, 100));
+
+    // Keep the floor and rear wall bright enough to catch the caustic, but make the rest dark.
+    add_rectangle_xz(scene, -1, 1, -1, 1, 0, screen_material); // Projection floor
+    add_rectangle_xz(scene, -1, 1, -1, 1, 4, dark_material); // Projection roof
+    add_rectangle_xy(scene, -1, 1, 0, 4, 1, dark_material);  // Projection wall
+    add_rectangle_xy(scene, -1, 1, 0, 4, -1, dark_material);   // Front wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, -1, dark_material);   // Left wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, 1, dark_material);    // Right wall
+    add_rectangle_xz(scene, -1, 1, -1, 1, 4, dark_material);   // Ceiling
+
+    // The prism in the center. Keep the size positive so triangle winding and the dispersion orientation stay readable.
+    add_triangular_prism(scene, Point3(0, 0.01f, 0.25f), -1.0f, 1.0f, prism_material);
+
+    // Smaller source means less angular spread and a clearer projected spectrum.
+    add_sphere(scene, Point3(-0.5f, 0.75f, -0.5f), 0.22f, light_material);
+
+    return scene;
+}
+
 void allocate_scene_on_gpu(
     const Scene& scene,
     HittableData** dev_objects,
