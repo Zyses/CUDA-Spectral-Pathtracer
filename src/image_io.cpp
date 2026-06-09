@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
+#include "spectrum.cuh"
 
 inline float sRGB_gamma(float v) {
     return v <= 0.0031308f ? 12.92f * v : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f;
@@ -25,19 +27,18 @@ void save_image_ppm(
 
     outfile << "P3\n" << width << " " << height << "\n255\n";
 
-    float scale = 1.0f / samples_per_pixel;
+    float scale = 1.0f / (samples_per_pixel * CIE_Y_INTEGRAL);
 
     for (int j = height - 1; j >= 0; j--) {
         for (int i = 0; i < width; i++) {
             int pixel_index = j * width + i;
 
-            Color pixel = framebuffer[pixel_index] * scale;
+            Color xyz = framebuffer[pixel_index] * scale;
+            Color pixel = xyz_to_linear_srgb(xyz);
 
-            // Clamp negative values that resulted from out-of-gamut spectral XYZ->RGB transformations
             pixel.x = std::max(0.0f, pixel.x);
             pixel.y = std::max(0.0f, pixel.y);
-            float max_z = std::max(0.0f, pixel.z); 
-            pixel.z = max_z;
+            pixel.z = std::max(0.0f, pixel.z);
 
             // Apply correct sRGB gamma mapping post-accumulation
             pixel.x = sRGB_gamma(pixel.x);

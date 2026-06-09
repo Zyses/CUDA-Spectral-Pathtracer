@@ -74,7 +74,33 @@ struct BoxData {
 struct HittableData {
     HittableType type;
     int data_index;
+    Point3 rotation_pivot;
+    Vec3 rotation_axis;
+    float rotation_degrees;
 };
+
+__device__ inline bool has_rotation(const HittableData& object) {
+    return fabsf(object.rotation_degrees) > 1e-6f && !object.rotation_axis.near_zero();
+}
+
+__device__ inline Ray rotate_ray_to_local(const Ray& r, const HittableData& object) {
+    if (!has_rotation(object)) {
+        return r;
+    }
+
+    Vec3 local_origin = object.rotation_pivot + rotate_around_axis(r.origin - object.rotation_pivot, object.rotation_axis, -object.rotation_degrees);
+    Vec3 local_direction = rotate_around_axis(r.direction, object.rotation_axis, -object.rotation_degrees);
+    return Ray(local_origin, local_direction, r.wavelength);
+}
+
+__device__ inline void rotate_hit_to_world(HitRecord& rec, const HittableData& object) {
+    if (!has_rotation(object)) {
+        return;
+    }
+
+    rec.p = object.rotation_pivot + rotate_around_axis(rec.p - object.rotation_pivot, object.rotation_axis, object.rotation_degrees);
+    rec.normal = rotate_around_axis(rec.normal, object.rotation_axis, object.rotation_degrees);
+}
 
 __device__ inline bool hit_sphere(
     const Ray& r,
@@ -257,29 +283,31 @@ __device__ inline bool hit_objects(
 
     for (int i = 0; i < num_objects; i++) {
         const HittableData& object = objects[i];
+        Ray object_ray = rotate_ray_to_local(r, object);
         bool hit_object = false;
 
         switch (object.type) {
             case SPHERE:
-                hit_object = hit_sphere(r, t_min, closest_so_far, temp_rec, spheres[object.data_index]);
+                hit_object = hit_sphere(object_ray, t_min, closest_so_far, temp_rec, spheres[object.data_index]);
                 break;
             case TRIANGLE:
-                hit_object = hit_triangle(r, t_min, closest_so_far, temp_rec, triangles[object.data_index]);
+                hit_object = hit_triangle(object_ray, t_min, closest_so_far, temp_rec, triangles[object.data_index]);
                 break;
             case RECTANGLE_XY:
-                hit_object = hit_rectangle_xy(r, t_min, closest_so_far, temp_rec, rect_xy[object.data_index]);
+                hit_object = hit_rectangle_xy(object_ray, t_min, closest_so_far, temp_rec, rect_xy[object.data_index]);
                 break;
             case RECTANGLE_XZ:
-                hit_object = hit_rectangle_xz(r, t_min, closest_so_far, temp_rec, rect_xz[object.data_index]);
+                hit_object = hit_rectangle_xz(object_ray, t_min, closest_so_far, temp_rec, rect_xz[object.data_index]);
                 break;
             case RECTANGLE_YZ:
-                hit_object = hit_rectangle_yz(r, t_min, closest_so_far, temp_rec, rect_yz[object.data_index]);
+                hit_object = hit_rectangle_yz(object_ray, t_min, closest_so_far, temp_rec, rect_yz[object.data_index]);
                 break;
             default:
                 break;
         }
 
         if (hit_object) {
+            rotate_hit_to_world(temp_rec, object);
             hit_anything = true;
             closest_so_far = temp_rec.t;
             rec = temp_rec;

@@ -84,6 +84,19 @@ __host__ __device__ inline Vec3 normalize(const Vec3& v) {
     return v / v.length();
 }
 
+__host__ __device__ inline Vec3 rotate_around_axis(const Vec3& v, const Vec3& axis, float angle_degrees) {
+    if (axis.near_zero() || fabsf(angle_degrees) < 1e-6f) {
+        return v;
+    }
+
+    Vec3 k = normalize(axis);
+    float angle = angle_degrees * M_PI / 180.0f;
+    float c = cosf(angle);
+    float s = sinf(angle);
+
+    return v * c + cross(k, v) * s + k * dot(k, v) * (1.0f - c);
+}
+
 __device__ inline Vec3 random_in_unit_sphere(curandState* state) {
     while (true) {
         auto p = Vec3::random(state, -1, 1);

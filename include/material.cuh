@@ -18,12 +18,11 @@ enum MaterialType {
 struct MaterialData {
     MaterialType type;
 
-    Color albedo;
+    SpectralProfile reflectance;
     float fuzz;
     float ior;
     bool dispersive;
-    Color emission;
-    int spectral_function_id;
+    SpectralProfile emission;
 };
 
 __device__ inline float schlick_reflectance(float cosine, float ref_idx) {
@@ -36,7 +35,7 @@ __device__ inline bool scatter_lambertian(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
@@ -47,7 +46,7 @@ __device__ inline bool scatter_lambertian(
     }
 
     scattered = Ray(rec.p, scatter_direction, r_in.wavelength);
-    attenuation = mat_data.albedo;
+    attenuation = evaluate_spectrum(mat_data.reflectance, r_in.wavelength);
     return true;
 }
 
@@ -55,7 +54,7 @@ __device__ inline bool scatter_metal(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
@@ -65,7 +64,7 @@ __device__ inline bool scatter_metal(
         reflected + mat_data.fuzz * random_in_unit_sphere(rand_state),
         r_in.wavelength
     );
-    attenuation = mat_data.albedo;
+    attenuation = evaluate_spectrum(mat_data.reflectance, r_in.wavelength);
     return (dot(scattered.direction, rec.normal) > 0);
 }
 
@@ -73,11 +72,11 @@ __device__ inline bool scatter_dielectric(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
-    attenuation = Color(1.0f, 1.0f, 1.0f);
+    attenuation = 1.0f;
 
     float refraction_ratio;
     float index;
@@ -115,10 +114,16 @@ __device__ inline bool scatter_emissive(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
+    (void)r_in;
+    (void)rec;
+    (void)mat_data;
+    (void)attenuation;
+    (void)scattered;
+    (void)rand_state;
     return false;
 }
 
@@ -126,7 +131,7 @@ __device__ inline bool scatter_spectral(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
@@ -137,27 +142,7 @@ __device__ inline bool scatter_spectral(
     }
 
     scattered = Ray(rec.p, scatter_direction, r_in.wavelength);
-
-    switch (mat_data.spectral_function_id) {
-        case 0:
-            if (r_in.wavelength >= 490 && r_in.wavelength <= 570) {
-                attenuation = Color(0.8f, 0.8f, 0.8f);
-            } else {
-                attenuation = Color(0.1f, 0.1f, 0.1f);
-            }
-            break;
-        case 1:
-            if (r_in.wavelength >= 600) {
-                attenuation = Color(0.9f, 0.9f, 0.9f);
-            } else {
-                attenuation = Color(0.1f, 0.1f, 0.1f);
-            }
-            break;
-        default:
-            attenuation = mat_data.albedo;
-            break;
-    }
-
+    attenuation = evaluate_spectrum(mat_data.reflectance, r_in.wavelength);
     return true;
 }
 
@@ -165,7 +150,7 @@ __device__ inline bool scatter(
     const Ray& r_in,
     const HitRecord& rec,
     const MaterialData& mat_data,
-    Color& attenuation,
+    float& attenuation,
     Ray& scattered,
     curandState* rand_state
 ) {
@@ -185,11 +170,15 @@ __device__ inline bool scatter(
     }
 }
 
-__device__ inline Color emit(const MaterialData& mat_data, float u, float v, const Point3& p) {
+__device__ inline float emit(const MaterialData& mat_data, float wavelength, float u, float v, const Point3& p) {
+    (void)u;
+    (void)v;
+    (void)p;
+
     if (mat_data.type == EMISSIVE) {
-        return mat_data.emission;
+        return evaluate_spectrum(mat_data.emission, wavelength);
     }
-    return Color(0.0f, 0.0f, 0.0f);
+    return 0.0f;
 }
 
 #endif // MATERIAL_CUH

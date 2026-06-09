@@ -1,101 +1,101 @@
-# PathTracer Spectral
+# CUDA Spectral Pathtracer
 
-A personal, experimental project: A high-performance spectral path tracer implemented with CUDA that accurately simulates light dispersion effects and spectral rendering in real-time. This is a passion project created to explore the physics of light and GPU-accelerated rendering techniques.
+A CUDA path tracer that transports a single wavelength per ray and converts the accumulated spectral result to display RGB only at the end of the render. The renderer is built as an experimental learning project for spectral light transport, wavelength-dependent materials, and GPU rendering.
 
 ## Features
 
-- **Physically-Based Spectral Rendering**: Simulates light wavelengths between 380nm and 780nm for accurate dispersion and color effects
-- **CUDA-Accelerated Computation**: Leverages GPU parallel processing for optimal performance
-- **Realistic Material System**:
-  - Lambertian (diffuse) surfaces
+- **Spectral path tracing**: Samples wavelengths between 380nm and 780nm and traces scalar radiance per wavelength
+- **CUDA acceleration**: Uses GPU kernels for random-state initialization and rendering
+- **Spectral material system**:
+  - Lambertian diffuse surfaces
   - Metallic surfaces with configurable roughness
-  - Dielectric materials (glass, water) with physically accurate dispersion
-  - Spectral materials with wavelength-dependent behavior
-  - Emissive materials for light sources
-- **Geometric Primitives**: Supports spheres, triangles, rectangles, triangular prisms, and boxes
-- **Advanced Camera Model**: Includes depth of field and configurable aperture
-- **Multiple Scene Configurations**:
-  - Cornell Box with dispersive prism
-  - Material showcase
-  - Prism dispersion demonstration
-- **Image Output**: Supports PPM format with timestamp-based filenames
+  - Dielectric materials with wavelength-dependent IOR
+  - Analytic spectral reflectance profiles
+  - Analytic spectral emission profiles
+- **Geometry**: Spheres, triangles, axis-aligned rectangles, triangular prisms, and boxes
+- **Object rotation**: Objects can define a rotation axis and angle; rays are transformed into object-local space for intersections
+- **Camera**: Perspective camera with depth of field
+- **Image output**: Timestamped PPM files
 
-![image](https://github.com/user-attachments/assets/025ae9ff-da73-406a-9173-f92bbc7f84c7)
+## How Spectral Rendering Works
 
-## Technical Details
+Each camera sample draws multiple wavelengths. A path carries one wavelength and one scalar throughput value. Materials evaluate reflectance, emission, and dielectric IOR at that wavelength.
 
-### The Physics of Light Dispersion
+The renderer accumulates CIE XYZ values per pixel:
 
-The renderer simulates how different wavelengths of light travel through materials with varying indices of refraction. This physical phenomenon is what creates rainbows and beautiful caustic patterns through glass prisms.
-
-The implementation uses Cauchy's equation to model dispersion:
-
-```
-n(λ) = A + B/λ² + C/λ⁴
+```text
+XYZ += L(lambda) * CIE_XYZ(lambda) * delta_lambda
 ```
 
-Where `n` is the refractive index, `λ` is the wavelength, and `A`, `B`, and `C` are material-specific constants calibrated for various materials like flint glass, water, and diamond.
+The final image is white-point normalized, converted from XYZ to linear sRGB, clamped, gamma encoded, and written to PPM. RGB values are not transported along the light path.
 
-### Spectral to RGB Conversion
+See [docs/SPECTRAL_RENDERING.md](docs/SPECTRAL_RENDERING.md) for implementation details.
 
-To visualize spectral data on traditional displays, the renderer implements a physically-based conversion from wavelengths to RGB color space, preserving the visual characteristics of dispersion effects.
+## Dispersion
 
-![image](https://github.com/user-attachments/assets/e795eeec-1017-4ae7-b06c-648a09aa4fde)
+Dielectric materials can use Cauchy's equation for wavelength-dependent refraction:
 
-![image](https://github.com/user-attachments/assets/79451194-2f7d-4e49-9011-5cc60092a209)
+```text
+n(lambda) = A + B / lambda^2 + C / lambda^4
+```
 
-### CUDA Optimization
+This lets different wavelengths refract differently through glass-like materials, producing prism and rainbow effects from a white spectral light source.
 
-The CUDA implementation uses:
-- Efficient thread/block organization
-- Optimized memory access patterns
-- Russian roulette path termination
-- Coalesced memory operations
-- Fast math operations
-
-## Building the Project
+## Building
 
 ### Prerequisites
 
-- CUDA Toolkit 11.0 or higher
-- CMake 3.18 or higher
-- A CUDA-capable GPU (compute capability 7.5+ recommended)
-- MSVC on Windows platforms
+- CUDA Toolkit 11.0 or newer
+- CMake 3.18 or newer
+- CUDA-capable GPU, compute capability 7.5 or newer recommended
+- MSVC on Windows
 
-### Compilation
+### Visual Studio
 
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
+Open the folder in Visual Studio and build the CMake project with one of the provided presets.
+
+### Command Line
+
+From a Visual Studio Developer Command Prompt:
+
+```bat
+cmake --preset x64-release
+cmake --build out/build/x64-release --config Release
 ```
 
 ## Usage
 
 Run the compiled executable:
 
-```bash
-./PathtracerSpectralRealtime
+```bat
+PathtracerSpectralRealtime.exe
 ```
 
-You'll be prompted to select a scene:
-1. Prism in Cornell Box
-2. Prism showcase (exterior)
-3. Material showcase
+The program loads the Rainbow focus showcase scene directly, prints its configuration, and writes a timestamped `.ppm` image.
 
-The renderer will display progress and save the final image as a timestamped .ppm file.
+## Scene Authoring Notes
 
-## Future Improvements ( maybe :D )
+Materials use analytic spectral profiles:
 
-- Implement BVH (Bounding Volume Hierarchy) acceleration structure
-- Add texture mapping support
-- Implement volumetric scattering
-- Add bidirectional path tracing algorithm
-- Support for importing 3D models
-- Implement denoising filter
-- Add real-time preview window
+```cpp
+int white = add_lambertian_material(scene, make_constant_spectrum(0.73f));
+int light = add_emissive_material(scene, make_constant_spectrum(28.0f));
+```
 
-## Note on Project Status
+Most object helper functions accept optional rotation parameters:
 
-This is a personal experimental project that I developed to deepen my understanding of spectral rendering and CUDA programming. It's continuously evolving as I explore new techniques and optimizations. Feel free to use it for learning purposes or as inspiration for your own rendering projects.
+```cpp
+add_triangular_prism(scene, Point3(0, 2, -1), 3, 3, prism_material, Vec3(0, 1, 0), 25.0f);
+add_rectangle_xz(scene, -1, 1, -1, 1, 0, white_material, Vec3(1, 0, 0), 15.0f);
+```
+
+The rotation is defined by an axis vector and an angle in degrees. Internally the ray is transformed into object-local space before the intersection test, and the hit point and normal are transformed back into world space.
+
+## Future Work
+
+- BVH acceleration
+- Tabulated measured SPDs and CIE CMFs
+- Textures and UV-driven spectral profiles
+- Volumetric scattering
+- Better tone mapping
+- Denoising

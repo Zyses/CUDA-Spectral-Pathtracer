@@ -37,12 +37,12 @@ extern "C" void launch_render_kernel(
 
 int main() {
     ImageProperties img_props;
-    img_props.width = 800;
-    img_props.height = 800;
+    img_props.width = 1024;
+    img_props.height = 1024;
     img_props.num_pixels = img_props.width * img_props.height;
     img_props.samples_per_pixel = 512;
     img_props.max_depth = 15;
-    img_props.spectral_samples = 25;
+    img_props.spectral_samples = 100;
     img_props.lambda_min = LAMBDA_MIN;
     img_props.lambda_max = LAMBDA_MAX;
 
@@ -53,34 +53,8 @@ int main() {
     std::cout << "  Spectral samples: " << img_props.spectral_samples << std::endl;
     std::cout << "  Spectral range: " << img_props.lambda_min << "-" << img_props.lambda_max << " nm" << std::endl;
 
-    int scene_choice = 0;
-    std::cout << "\nChoose a scene:" << std::endl;
-    std::cout << "  1. Prism in Cornell Box" << std::endl;
-    std::cout << "  2. Prism showcase (exterior)" << std::endl;
-    std::cout << "  3. Material showcase" << std::endl;
-    std::cout << "  4. Rainbow focus showcase" << std::endl;
-    std::cout << "Your choice (1-4): ";
-    std::cin >> scene_choice;
-
-    Scene scene(Camera(Point3(0, 0, 0), Point3(0, 0, -1), Vec3(0, 1, 0), 40, 1.0, 0.0, 10.0), img_props);
-
-    switch (scene_choice) {
-        case 1:
-            scene = create_cornell_box_scene(img_props);
-            break;
-        case 2:
-            scene = create_prism_showcase_scene(img_props);
-            break;
-        case 3:
-            scene = create_material_showcase_scene(img_props);
-            break;
-        case 4:
-            scene = create_rainbow_scene(img_props);
-            break;
-        default:
-            scene = create_cornell_box_scene(img_props);
-            break;
-    }
+    std::cout << "\nLoading scene: Rainbow focus showcase" << std::endl;
+    Scene scene = create_rainbow_scene(img_props);
 
     std::cout << "\nScene information:" << std::endl;
     std::cout << "  Number of objects: " << scene.objects.size() << std::endl;

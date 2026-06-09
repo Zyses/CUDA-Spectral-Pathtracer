@@ -1,8 +1,32 @@
 #include "scene_setup.h"
 #include "cuda_utils.cuh"
 #include <cmath>
+#include <cfloat>
 
-int add_sphere(Scene& scene, const Point3& center, float radius, int material_id) {
+HittableData make_hittable(
+    HittableType type,
+    int data_index,
+    const Point3& rotation_pivot,
+    const Vec3& rotation_axis,
+    float rotation_degrees
+) {
+    HittableData object;
+    object.type = type;
+    object.data_index = data_index;
+    object.rotation_pivot = rotation_pivot;
+    object.rotation_axis = rotation_axis;
+    object.rotation_degrees = rotation_degrees;
+    return object;
+}
+
+int add_sphere(
+    Scene& scene,
+    const Point3& center,
+    float radius,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f
+) {
     int index = static_cast<int>(scene.spheres.size());
     
     SphereData sphere;
@@ -12,16 +36,22 @@ int add_sphere(Scene& scene, const Point3& center, float radius, int material_id
     
     scene.spheres.push_back(sphere);
     
-    HittableData object;
-    object.type = SPHERE;
-    object.data_index = index;
-    
-    scene.objects.push_back(object);
+    scene.objects.push_back(make_hittable(SPHERE, index, center, rotation_axis, rotation_degrees));
     
     return index;
 }
 
-int add_rectangle_xy(Scene& scene, float x0, float x1, float y0, float y1, float k, int material_id) {
+int add_rectangle_xy(
+    Scene& scene,
+    float x0,
+    float x1,
+    float y0,
+    float y1,
+    float k,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f
+) {
     int index = static_cast<int>(scene.rect_xy.size());
     
     RectangleXYData rect;
@@ -34,16 +64,23 @@ int add_rectangle_xy(Scene& scene, float x0, float x1, float y0, float y1, float
     
     scene.rect_xy.push_back(rect);
     
-    HittableData object;
-    object.type = RECTANGLE_XY;
-    object.data_index = index;
-    
-    scene.objects.push_back(object);
+    Point3 pivot((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, k);
+    scene.objects.push_back(make_hittable(RECTANGLE_XY, index, pivot, rotation_axis, rotation_degrees));
     
     return index;
 }
 
-int add_rectangle_xz(Scene& scene, float x0, float x1, float z0, float z1, float k, int material_id) {
+int add_rectangle_xz(
+    Scene& scene,
+    float x0,
+    float x1,
+    float z0,
+    float z1,
+    float k,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f
+) {
     int index = static_cast<int>(scene.rect_xz.size());
     
     RectangleXZData rect;
@@ -56,16 +93,23 @@ int add_rectangle_xz(Scene& scene, float x0, float x1, float z0, float z1, float
     
     scene.rect_xz.push_back(rect);
     
-    HittableData object;
-    object.type = RECTANGLE_XZ;
-    object.data_index = index;
-    
-    scene.objects.push_back(object);
+    Point3 pivot((x0 + x1) * 0.5f, k, (z0 + z1) * 0.5f);
+    scene.objects.push_back(make_hittable(RECTANGLE_XZ, index, pivot, rotation_axis, rotation_degrees));
     
     return index;
 }
 
-int add_rectangle_yz(Scene& scene, float y0, float y1, float z0, float z1, float k, int material_id) {
+int add_rectangle_yz(
+    Scene& scene,
+    float y0,
+    float y1,
+    float z0,
+    float z1,
+    float k,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f
+) {
     int index = static_cast<int>(scene.rect_yz.size());
     
     RectangleYZData rect;
@@ -78,16 +122,22 @@ int add_rectangle_yz(Scene& scene, float y0, float y1, float z0, float z1, float
     
     scene.rect_yz.push_back(rect);
     
-    HittableData object;
-    object.type = RECTANGLE_YZ;
-    object.data_index = index;
-    
-    scene.objects.push_back(object);
+    Point3 pivot(k, (y0 + y1) * 0.5f, (z0 + z1) * 0.5f);
+    scene.objects.push_back(make_hittable(RECTANGLE_YZ, index, pivot, rotation_axis, rotation_degrees));
     
     return index;
 }
 
-int add_triangle(Scene& scene, const Point3& v0, const Point3& v1, const Point3& v2, int material_id) {
+int add_triangle(
+    Scene& scene,
+    const Point3& v0,
+    const Point3& v1,
+    const Point3& v2,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f,
+    const Point3& rotation_pivot = Point3(FLT_MAX, FLT_MAX, FLT_MAX)
+) {
     int index = static_cast<int>(scene.triangles.size());
     
     TriangleData triangle;
@@ -103,16 +153,21 @@ int add_triangle(Scene& scene, const Point3& v0, const Point3& v1, const Point3&
     
     scene.triangles.push_back(triangle);
     
-    HittableData object;
-    object.type = TRIANGLE;
-    object.data_index = index;
-    
-    scene.objects.push_back(object);
+    Point3 pivot = rotation_pivot.x == FLT_MAX ? (v0 + v1 + v2) / 3.0f : rotation_pivot;
+    scene.objects.push_back(make_hittable(TRIANGLE, index, pivot, rotation_axis, rotation_degrees));
     
     return index;
 }
 
-void add_triangular_prism(Scene& scene, const Point3& base_center, float base_size, float height, int material_id) {
+void add_triangular_prism(
+    Scene& scene,
+    const Point3& base_center,
+    float base_size,
+    float height,
+    int material_id,
+    const Vec3& rotation_axis = Vec3(0, 1, 0),
+    float rotation_degrees = 0.0f
+) {
     const float h = base_size * std::sqrt(3) / 2.0f;
     const float r = base_size / std::sqrt(3.0f);
     
@@ -126,14 +181,15 @@ void add_triangular_prism(Scene& scene, const Point3& base_center, float base_si
         top_vertices[i] = Point3(base_vertices[i].x, base_vertices[i].y + height, base_vertices[i].z);
     }
     
-    add_triangle(scene, base_vertices[0], base_vertices[1], base_vertices[2], material_id);
+    Point3 prism_pivot = base_center + Vec3(0.0f, height * 0.5f, 0.0f);
+    add_triangle(scene, base_vertices[0], base_vertices[1], base_vertices[2], material_id, rotation_axis, rotation_degrees, prism_pivot);
     
-    add_triangle(scene, top_vertices[0], top_vertices[2], top_vertices[1], material_id);
+    add_triangle(scene, top_vertices[0], top_vertices[2], top_vertices[1], material_id, rotation_axis, rotation_degrees, prism_pivot);
     
     for (int i = 0; i < 3; i++) {
         int j = (i + 1) % 3;
-        add_triangle(scene, base_vertices[i], base_vertices[j], top_vertices[i], material_id);
-        add_triangle(scene, base_vertices[j], top_vertices[j], top_vertices[i], material_id);
+        add_triangle(scene, base_vertices[i], base_vertices[j], top_vertices[i], material_id, rotation_axis, rotation_degrees, prism_pivot);
+        add_triangle(scene, base_vertices[j], top_vertices[j], top_vertices[i], material_id, rotation_axis, rotation_degrees, prism_pivot);
     }
 }
 
@@ -154,202 +210,80 @@ int add_material(Scene& scene, const MaterialData& material) {
     return index;
 }
 
-int add_lambertian_material(Scene& scene, const Color& albedo) {
+MaterialData make_base_material(MaterialType type) {
     MaterialData material;
-    material.type = LAMBERTIAN;
-    material.albedo = albedo;
+    material.type = type;
+    material.reflectance = make_constant_spectrum(1.0f);
+    material.fuzz = 0.0f;
+    material.ior = 1.5f;
+    material.dispersive = false;
+    material.emission = make_constant_spectrum(0.0f);
+    return material;
+}
+
+int add_lambertian_material(Scene& scene, const SpectralProfile& reflectance) {
+    MaterialData material = make_base_material(LAMBERTIAN);
+    material.reflectance = reflectance;
     return add_material(scene, material);
 }
 
-int add_metal_material(Scene& scene, const Color& albedo, float fuzz) {
-    MaterialData material;
-    material.type = METAL;
-    material.albedo = albedo;
+int add_metal_material(Scene& scene, const SpectralProfile& reflectance, float fuzz) {
+    MaterialData material = make_base_material(METAL);
+    material.reflectance = reflectance;
     material.fuzz = fuzz;
     return add_material(scene, material);
 }
 
 int add_dielectric_material(Scene& scene, float ior, bool dispersive) {
-    MaterialData material;
-    material.type = DIELECTRIC;
+    MaterialData material = make_base_material(DIELECTRIC);
     material.ior = ior;
     material.dispersive = dispersive;
     return add_material(scene, material);
 }
 
-int add_emissive_material(Scene& scene, const Color& emission) {
-    MaterialData material;
-    material.type = EMISSIVE;
+int add_emissive_material(Scene& scene, const SpectralProfile& emission) {
+    MaterialData material = make_base_material(EMISSIVE);
     material.emission = emission;
     return add_material(scene, material);
 }
 
-int add_spectral_material(Scene& scene, const Color& albedo, int spectral_function_id) {
-    MaterialData material;
-    material.type = SPECTRAL;
-    material.albedo = albedo;
-    material.spectral_function_id = spectral_function_id;
+int add_spectral_material(Scene& scene, const SpectralProfile& reflectance) {
+    MaterialData material = make_base_material(SPECTRAL);
+    material.reflectance = reflectance;
     return add_material(scene, material);
 }
 
-Scene create_prism_showcase_scene(const ImageProperties& img_props) {
-    Point3 lookfrom(0, 8, -20);
-    Point3 lookat(0, 2, 0);
-    Vec3 vup(0, 1, 0);
-    float dist_to_focus = 20.0f;
-    float aperture = 0.1f;
-    float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
-    
-    Camera cam(lookfrom, lookat, vup, 45, aspect_ratio, aperture, dist_to_focus);
-    
-    Scene scene(cam, img_props);
-    
-    int ground_material = add_lambertian_material(scene, Color(0.2f, 0.3f, 0.1f));
-    int prism_material = add_dielectric_material(scene, 1.5f, true);
-    int light_material = add_emissive_material(scene, Color(15, 15, 15));
-    int metal_material = add_metal_material(scene, Color(0.8f, 0.8f, 0.8f), 0.05f);
-    int glass_material = add_dielectric_material(scene, 1.5f, false);
-    int diffuse_material = add_lambertian_material(scene, Color(0.4f, 0.2f, 0.1f));
-    int spectral_material = add_spectral_material(scene, Color(0.8f, 0.8f, 0.8f), 0);
-    
-    add_rectangle_xz(scene, -1000, 1000, -1000, 1000, -1, ground_material);
-    
-    add_triangular_prism(scene, Point3(0, 2, -1), 3, 3, prism_material);
-    
-    add_sphere(scene, Point3(-10, 15, -10), 5, light_material);
-    
-    add_sphere(scene, Point3(-5, 2, 5), 2, metal_material);
-    add_sphere(scene, Point3(5, 2, 5), 2, glass_material);
-    add_sphere(scene, Point3(-5, 2, -5), 2, diffuse_material);
-    add_sphere(scene, Point3(5, 2, -5), 2, spectral_material);
-    
-    int white_diffuse = add_lambertian_material(scene, Color(0.9f, 0.9f, 0.9f));
-    for (int i = -5; i <= 5; i++) {
-        for (int j = -5; j <= 5; j++) {
-            add_sphere(scene, Point3(i*0.7f, 0, j*0.7f), 0.3f, white_diffuse);
-        }
-    }
-    
-    return scene;
-}
-
-Scene create_material_showcase_scene(const ImageProperties& img_props) {
-    Point3 lookfrom(13, 2, 3);
-    Point3 lookat(0, 0, 0);
-    Vec3 vup(0, 1, 0);
-    float dist_to_focus = 10.0f;
-    float aperture = 0.1f;
-    float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
-    
-    Camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
-    
-    Scene scene(cam, img_props);
-    
-    int ground_material = add_lambertian_material(scene, Color(0.5f, 0.5f, 0.5f));
-    add_sphere(scene, Point3(0, -1000, 0), 1000, ground_material);
-    
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            float choose_mat = static_cast<float>(rand()) / RAND_MAX;
-            Point3 center(a + 0.9f * static_cast<float>(rand()) / RAND_MAX, 0.2f, b + 0.9f * static_cast<float>(rand()) / RAND_MAX);
-            
-            if ((center - Point3(4, 0.2f, 0)).length() > 0.9f) {
-                int sphere_material;
-                
-                if (choose_mat < 0.8f) {
-                    Color albedo = Color(
-                        static_cast<float>(rand()) / RAND_MAX * static_cast<float>(rand()) / RAND_MAX,
-                        static_cast<float>(rand()) / RAND_MAX * static_cast<float>(rand()) / RAND_MAX,
-                        static_cast<float>(rand()) / RAND_MAX * static_cast<float>(rand()) / RAND_MAX
-                    );
-                    sphere_material = add_lambertian_material(scene, albedo);
-                } else if (choose_mat < 0.95f) {
-                    Color albedo = Color(
-                        0.5f * (1.0f + static_cast<float>(rand()) / RAND_MAX),
-                        0.5f * (1.0f + static_cast<float>(rand()) / RAND_MAX),
-                        0.5f * (1.0f + static_cast<float>(rand()) / RAND_MAX)
-                    );
-                    float fuzz = 0.5f * static_cast<float>(rand()) / RAND_MAX;
-                    sphere_material = add_metal_material(scene, albedo, fuzz);
-                } else {
-                    sphere_material = add_dielectric_material(scene, 1.5f, choose_mat > 0.98f);
-                }
-                
-                add_sphere(scene, center, 0.2f, sphere_material);
-            }
-        }
-    }
-    
-    int material1 = add_dielectric_material(scene, 1.5f, true);
-    add_sphere(scene, Point3(0, 1, 0), 1.0f, material1);
-    
-    int material2 = add_lambertian_material(scene, Color(0.4f, 0.2f, 0.1f));
-    add_sphere(scene, Point3(-4, 1, 0), 1.0f, material2);
-    
-    int material3 = add_metal_material(scene, Color(0.7f, 0.6f, 0.5f), 0.0f);
-    add_sphere(scene, Point3(4, 1, 0), 1.0f, material3);
-    
-    return scene;
-}
-
-Scene create_cornell_box_scene(const ImageProperties& img_props) {
-    Point3 lookfrom(278, 278, -800);
-    Point3 lookat(278, 278, 0);
-    Vec3 vup(0, 1, 0);
-    float dist_to_focus = 10.0f;
-    float aperture = 0.0f;
-    float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
-    
-    Camera cam(lookfrom, lookat, vup, 40, aspect_ratio, aperture, dist_to_focus);
-    
-    Scene scene(cam, img_props);
-    
-    int red = add_lambertian_material(scene, Color(0.65f, 0.05f, 0.05f));
-    int white = add_lambertian_material(scene, Color(0.73f, 0.73f, 0.73f));
-    int green = add_lambertian_material(scene, Color(0.12f, 0.45f, 0.15f));
-    int light = add_emissive_material(scene, Color(15.0f, 15.0f, 15.0f));
-    
-    add_rectangle_yz(scene, 0, 555, 0, 555, 555, green);
-    add_rectangle_yz(scene, 0, 555, 0, 555, 0, red);
-    add_rectangle_xz(scene, 0, 555, 0, 555, 555, white);
-    add_rectangle_xz(scene, 0, 555, 0, 555, 0, white);
-    add_rectangle_xy(scene, 0, 555, 0, 555, 555, white);
-    
-    add_rectangle_xz(scene, 213, 343, 227, 332, 554, light);
-    
-    int prism_material = add_dielectric_material(scene, 1.5f, true);
-    add_triangular_prism(scene, Point3(278, 165, 278), 80, 165, prism_material);
-
-    return scene;
-}
-
 Scene create_rainbow_scene(const ImageProperties& img_props) {
-    Point3 lookfrom(0, 3, 0);
-    Point3 lookat(0, 0.5f, 0);
-    Vec3 vup(0, 0, 1);
-    float dist_to_focus = 2.5f;
-    float aperture = 0.05f;
+    Point3 lookfrom(0.5f, 2, 0);
+    Point3 lookat(0.25f, 0.5f, 0);
+    Vec3 vup(0, 1, 0);
+    float dist_to_focus = 1.5f;
+    float aperture = 0.0f;
     float aspect_ratio = static_cast<float>(img_props.width) / img_props.height;
 
     Camera cam(lookfrom, lookat, vup, 60, aspect_ratio, aperture, dist_to_focus);
 
     Scene scene(cam, img_props);
 
-    int white_material = add_lambertian_material(scene, Color(0.9f, 0.9f, 0.9f));
+    int screen_material = add_lambertian_material(scene, make_constant_spectrum(0.82f));
+    int dark_material = add_lambertian_material(scene, make_constant_spectrum(0.08f));
     int prism_material = add_dielectric_material(scene, 1.5f, true);
-    int light_material = add_emissive_material(scene, Color(100, 100, 100));
+    int light_material = add_emissive_material(scene, make_constant_spectrum(12));
 
-    // Create a plain white box setup (floor, left, right, back walls)
-    add_rectangle_xz(scene, -1, 1, -1, 1, 0, white_material); // Floor
-    add_rectangle_xy(scene, -1, 1, 0, 4, 1, white_material);  // Back wall
-    add_rectangle_yz(scene, 0, 4, -1, 1, -1, white_material); // Left wall
-    add_rectangle_yz(scene, 0, 4, -1, 1, 1, white_material);  // Right wall
+    // Keep the floor and rear wall bright enough to catch the caustic, but make the rest dark.
+    add_rectangle_xz(scene, -1, 1, -1, 1, 0, screen_material); // Projection floor
+    add_rectangle_xz(scene, -1, 1, -1, 1, 4, dark_material); // Projection roof
+    add_rectangle_xy(scene, -1, 1, 0, 4, 1, dark_material);  // Projection wall
+    add_rectangle_xy(scene, -1, 1, 0, 4, -1, dark_material);   // Front wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, -1, dark_material);   // Left wall
+    add_rectangle_yz(scene, 0, 4, -1, 1, 1, dark_material);    // Right wall
+    add_rectangle_xz(scene, -1, 1, -1, 1, 4, dark_material);   // Ceiling
 
-    // The prism in the center
-    add_triangular_prism(scene, Point3(0, 0, 0.25f), -1, 1, prism_material);
+    // The prism in the center. Keep the size positive so triangle winding and the dispersion orientation stay readable.
+    add_triangular_prism(scene, Point3(0, 0.01f, 0.25f), 1.0f, 1.0f, prism_material, Vec3(0, 1, 0), 70.0f);
 
-    // A light pointing at the prism. It's close to cast strong light that will disperse.
-    add_sphere(scene, Point3(-0.5f, 0.5f, -1.5f), 0.1f, light_material);
+    // Smaller source means less angular spread and a clearer projected spectrum.
+    add_sphere(scene, Point3(-0.5f, 0.75f, -0.5f), 0.22f, light_material);
 
     return scene;
 }
